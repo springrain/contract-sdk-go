@@ -56,7 +56,7 @@ func (e *erc1155) Action(ctx code.Context) code.Response {
 	owner := string(args["owner"])
 	owners := make([]string, 0)
 	ownersBytes := args["owners"]
-	if ownersBytes != nil {
+	if len(ownersBytes) > 0 {
 		json.Unmarshal(ownersBytes, &owners)
 	}
 
@@ -68,7 +68,7 @@ func (e *erc1155) Action(ctx code.Context) code.Response {
 	}
 	tokenIDs := make([]int64, 0)
 	tokenIDsBytes := args["tokenIDs"]
-	if tokenIDsBytes != nil {
+	if len(tokenIDsBytes) > 0 {
 		json.Unmarshal(tokenIDsBytes, &tokenIDs)
 	}
 
@@ -80,12 +80,18 @@ func (e *erc1155) Action(ctx code.Context) code.Response {
 	}
 	amounts := make([]int64, 0)
 	amountsBytes := args["amounts"]
-	if amountsBytes != nil {
+	if len(amountsBytes) > 0 {
 		json.Unmarshal(amountsBytes, &amounts)
 	}
 	//原始数据,用于处理 {to} 是{IERC1155Receiver-onERC1155Received} 合约,用于传递原始数据
 	//暂时没有处理转给合约这种情况
 	data := args["data"]
+
+	datas := make([][]byte, 0)
+	dataBytes := args["datas"]
+	if len(dataBytes) > 0 {
+		json.Unmarshal(dataBytes, &datas)
+	}
 
 	switch action {
 	case "uri": //获取 URI
@@ -113,7 +119,7 @@ func (e *erc1155) Action(ctx code.Context) code.Response {
 		if to == "" {
 			to = ctx.Caller()
 		}
-		err := e.mintBatch(to, tokenIDs, amounts, data)
+		err := e.mintBatch(to, tokenIDs, amounts, datas)
 		if err != nil {
 			return code.Error(err)
 		}
@@ -349,14 +355,14 @@ func (e *erc1155) mint(to string, tokenID int64, amount int64, data []byte) erro
   @param amounts  铸造的token数量
   @param data 当参数 {to} 是智能合约时,交易发送者(合约调用方)必须将参数 {data} 的原始数据,不做任何改动地传递给{to}合约onERC1155Received接口函数的参数 "data"
 */
-func (e *erc1155) mintBatch(to string, tokenIDs []int64, amounts []int64, data []byte) error {
+func (e *erc1155) mintBatch(to string, tokenIDs []int64, amounts []int64, datas [][]byte) error {
 	if len(tokenIDs) != len(amounts) {
 		return fmt.Errorf("mintBatch: tokenIDs len is %v ,amounts  len is %v ", len(tokenIDs), len(amounts))
 	}
 	for i := 0; i < len(tokenIDs); i++ {
 		tokenID := tokenIDs[i]
 		amount := amounts[i]
-		err := e.mint(to, tokenID, amount, data)
+		err := e.mint(to, tokenID, amount, datas[i])
 		if err != nil {
 			return fmt.Errorf("mintBatch-->e.mint:%w", err)
 		}
